@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Монгол орны интерактив газрын зураг</title>
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--ink:#173b35;--muted:#71827c;--green:#176b55;--mint:#d9eee5;--paper:#f5f8f5;--line:#e1e9e3}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:#1b302b;font-family:Inter,"Segoe UI",Arial,sans-serif}
+header{padding:26px 5vw 18px;background:#fff;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:11px;letter-spacing:2px;color:var(--green);font-weight:800;text-transform:uppercase}
+h1{font-size:clamp(25px,3vw,38px);margin:8px 0 5px;color:var(--ink);letter-spacing:-1px}
+.sub{margin:0;color:var(--muted);font-size:14px}
+.wrap{max-width:1440px;margin:auto;padding:24px 4vw 40px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 15px;min-width:120px}
+.stat b{display:block;font-size:20px;color:var(--green)}.stat span{font-size:11px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,.8fr);gap:18px;align-items:stretch}
+.mapbox,.panel{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 8px 28px #193d2b0a}
+.maphead{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.maphead strong{font-size:14px;color:var(--ink)}.hint{font-size:11px;color:var(--muted)}
+#map{height:660px;background:#f8fbf8;cursor:grab}
+.panel{padding:22px;min-height:660px;display:flex;flex-direction:column}
+.paneltop{display:flex;justify-content:space-between;align-items:center}
+.pill{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--green);background:var(--mint);padding:7px 10px;border-radius:30px}
+#provinceName{font-size:28px;line-height:1.2;margin:18px 0 6px;color:var(--ink)}
+.en{font-size:12px;color:var(--muted)}
+#provinceDesc{font-size:14px;line-height:1.8;color:#52645d;margin:18px 0}
+.infoGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:2px 0 18px}
+.info{background:#f5f8f5;border-radius:11px;padding:12px}
+.info b{display:block;font-size:18px;color:var(--green)}.info span{font-size:10px;color:var(--muted)}
+.soumHead{display:flex;justify-content:space-between;align-items:center;padding:13px 0 9px;border-top:1px solid var(--line);font-size:13px;font-weight:800;color:var(--ink)}
+#soums{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow:auto;max-height:260px;padding-right:4px}
+.soum{background:#f6f9f6;border:1px solid #edf1ed;border-radius:8px;padding:8px 9px;font-size:11px;color:#465b52}
+.empty{margin:auto;text-align:center;max-width:280px;color:var(--muted)}
+.empty .symbol{font-size:42px;margin-bottom:15px}
+.empty h2{color:var(--ink);font-size:20px}
+footer{padding:18px 4vw;color:#819088;font-size:10px;text-align:center}
+.leaflet-container{font:inherit}.leaflet-control-attribution{font-size:9px!important}
+@media(max-width:900px){.layout{grid-template-columns:1fr}#map{height:540px}.panel{min-height:400px}}
+@media(max-width:560px){header{padding:22px 5vw}.wrap{padding:15px 3vw 25px}#map{height:440px}.panel{padding:18px}#provinceName{font-size:24px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">MONGOLIA · INTERACTIVE ATLAS</div>
+  <h1>Монгол орны газрын зураг</h1>
+  <p class="sub">Аймаг, сумдын мэдээллийг нэг дороос — газрын зураг дээр сонгон танилцаарай.</p>
+</header>
+<main class="wrap">
+  <div class="stats">
+    <div class="stat"><b>21</b><span>АЙМАГ</span></div>
+    <div class="stat"><b>330</b><span>СУМ</span></div>
+    <div class="stat"><b>1</b><span>УЛААНБААТАР</span></div>
+    <div class="stat"><b id="loadedCount">—</b><span>ГАЗРЫН ЗУРГИЙН БҮС</span></div>
+  </div>
+  <div class="layout">
+    <section class="mapbox">
+      <div class="maphead"><strong>Монгол Улсын засаг захиргааны зураг</strong><span class="hint">Аймаг дээр очих · Дарах</span></div>
+      <div id="map"></div>
+    </section>
+    <aside class="panel">
+      <div class="paneltop"><span class="pill">АЙМГИЙН МЭДЭЭЛЭЛ</span><span class="hint" id="selectHint">Сонголт хийгээгүй</span></div>
+      <div id="details" class="empty">
+        <div class="symbol">⌖</div>
+        <h2>Аймгаа сонгоно уу</h2>
+        <p>Газрын зураг дээрх аль нэг аймаг дээр хулганаа байрлуулахад тухайн бүс тодорно. Дарж дэлгэрэнгүй мэдээлэл болон сумдын нэрсийг хараарай.</p>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer>
+  Газрын зургийн хил: geoBoundaries gbOpen MNG ADM1 · Сумдын нэр: Open Admin Data, CC BY 4.0.
+  <br>Аймгийн танилцуулга, статистикийг <code>PROVINCE_INFO</code> хэсэгт өөрийн мэдээллээр шинэчлэх боломжтой.
+</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Аймгийн товч танилцуулгыг энд өөрийн хүссэнээр засварлана.
+// Дутуу мэдээлэлтэй аймгуудад ерөнхий танилцуулга автоматаар харагдана.
+const PROVINCE_INFO = {
+ "Архангай":{desc:"Монгол орны хангайн бүсэд орших, уул нуруу, гол мөрөн, нуур, рашаан бүхий байгалийн үзэсгэлэнт аймаг. Аялал жуулчлал, мал аж ахуй, байгалийн өвөрмөц тогтоцоороо онцлог.",feature:"Хангайн бүс"},
+ "Баян-Өлгий":{desc:"Монгол орны баруун хязгаарт орших, Алтайн нурууны өндөр уулс, мөсөн гол, бүргэдийн уламжлалт соёлоороо алдартай аймаг.",feature:"Алтайн нуруу"},
+ "Баянхонгор":{desc:"Говь, тал, хангай хосолсон байгалийн олон янзын бүс бүхий аймаг. Их богд уул, нуур, рашаан, говийн өвөрмөц тогтоцтой.",feature:"Говь-хангайн бүс"},
+ "Булган":{desc:"Монгол орны хойд хэсэгт байрлах ой тайга, гол мөрөн, үржил шимт хөндий бүхий аймаг. Байгаль, түүх соёлын аялал жуулчлал хөгжүүлэх нөөцтэй.",feature:"Ойт хээр"},
+ "Говь-Алтай":{desc:"Алтайн нурууны салбар уулс, говийн уудам хөндий хосолсон баруун бүсийн аймаг. Байгалийн өвөрмөц тогтоц, нүүдлийн соёлоороо онцлог.",feature:"Алтайн уулс"},
+ "Говьсүмбэр":{desc:"Монгол орны төвийн бүсэд орших, тал хээрийн тогтоцтой, төмөр зам болон авто замын зангилаа бүхий аймаг.",feature:"Тал хээр"},
+ "Дархан-Уул":{desc:"Монгол орны хойд бүсийн аж үйлдвэр, худалдаа, үйлчилгээний чухал төв. Дархан хотыг түшиглэсэн эдийн засаг, соёлын хөгжилтэй.",feature:"Аж үйлдвэрийн төв"},
+ "Дорноговь":{desc:"Монгол орны зүүн өмнөд хэсэгт орших говийн бүсийн аймаг. Хамарын хийд, Энергийн төв зэрэг түүх, соёл, байгалийн аяллын газруудтай.",feature:"Говийн бүс"},
+ "Дорнод":{desc:"Монгол орны зүүн хэсэгт орших өргөн уудам тал хээр, нуурууд, биологийн олон янз байдлаараа онцлог аймаг.",feature:"Дорнын тал"},
+ "Дундговь":{desc:"Говийн бүсийн уудам тал, нам уулс, өвөрмөц хад чулуу, уртын дуу, морин хуурын уламжлалаараа танигдсан аймаг.",feature:"Говийн тал"},
+ "Завхан":{desc:"Монгол Алтай, Хангайн нурууны уулс, Отгонтэнгэр хайрхан, нуур, гол мөрөн бүхий байгалийн үзэсгэлэнт аймаг.",feature:"Отгонтэнгэр"},
+ "Өвөрхангай":{desc:"Хангайн нурууны өвөр бэлд орших, Хархорин, Эрдэнэ Зуу, Орхоны хөндий зэрэг түүх, соёлын өвөөр баялаг аймаг.",feature:"Түүх, соёлын өв"},
+ "Өмнөговь":{desc:"Монгол орны хамгийн том газар нутагтай аймаг. Говь гурван сайхан, Ёлын ам, Хонгорын элс, Баянзаг зэрэг дэлхийд танигдсан байгалийн үзмэртэй.",feature:"Говийн аялал"},
+ "Сүхбаатар":{desc:"Монгол орны зүүн өмнөд хэсгийн тал хээрийн бүсэд орших, Дарьгангын байгалийн тогтоц, галт уулын гаралтай уулс, нуураараа онцлог.",feature:"Дарьгангын бүс"},
+ "Сэлэнгэ":{desc:"Монгол орны хойд хэсгийн ойт хээр, гол мөрөн, тариалангийн бүс нутаг. Байгалийн аялал, газар тариалангийн үйлдвэрлэл хөгжсөн.",feature:"Газар тариалан"},
+ "Төв":{desc:"Улаанбаатар хотыг хүрээлсэн төвийн бүсийн аймаг. Хустайн нуруу, Горхи-Тэрэлжийн орчим, түүх соёлын дурсгалт газруудтай.",feature:"Төвийн бүс"},
+ "Увс":{desc:"Монгол орны баруун хойд хэсэгт орших, Увс нуурын ай сав, өндөр уулс, говь, тал хосолсон байгалийн өвөрмөц бүс.",feature:"Увс нуурын ай сав"},
+ "Ховд":{desc:"Монгол Алтайн нуруу, Хар-Ус нуур, олон ястны өв соёл, байгалийн олон янз байдлаараа онцлог баруун бүсийн аймаг.",feature:"Хар-Ус нуур"},
+ "Хөвсгөл":{desc:"Хөвсгөл нуур, тайга, өндөр уулс бүхий Монгол орны аялал жуулчлалын гол бүсүүдийн нэг. Цэнгэг ус, байгалийн өвөрмөц тогтоцоороо алдартай.",feature:"Хөвсгөл нуур"},
+ "Хэнтий":{desc:"Монголын зүүн хойд хэсэгт орших, Хэнтийн нуруу, Онон-Балжийн сав газар, Их эзэн Чингис хааны түүхтэй холбогдох дурсгалт газруудтай.",feature:"Түүхэн аялал"},
+ "Орхон":{desc:"Эрдэнэт хотыг түшиглэсэн уул уурхай, үйлдвэрлэл, үйлчилгээний төв бүхий аймаг.",feature:"Эрдэнэт хот"},
+ "Улаанбаатар":{desc:"Монгол Улсын нийслэл, улс төр, эдийн засаг, боловсрол, соёл, аялал жуулчлалын гол төв. Хот нь 9 дүүрэгт хуваагдана.",feature:"Монгол Улсын нийслэл"}
+};
+const map=L.map('map',{zoomControl:true,scrollWheelZoom:true,preferCanvas:true}).setView([46.8,103.8],4.5);
+let geoLayer, selected=null, soumData=[];
+const baseStyle={color:'#ffffff',weight:1.4,opacity:1,fillColor:'#5ca98a',fillOpacity:.72};
+function norm(s){return (s||'').toString().toLocaleLowerCase('mn').replace(/[’'`-]/g,'').replace(/\s+/g,'').trim()}
+function propName(p){
+ return p.name_mn||p.name||p.NAME_1||p.shapeName||p.admin1Name||p['name:mn']||p.NAME||p.NAME_1_MN||'';
+}
+function featureByName(name){return geoLayer?.getLayers().find(l=>norm(propName(l.feature.properties))===norm(name))}
+function showProvince(name,feature){
+ const info=PROVINCE_INFO[name]||{desc:`${name} аймаг нь Монгол Улсын засаг захиргааны нэгж юм. Аймгийн түүх, газар зүй, эдийн засаг, аялал жуулчлалын мэдээллийг энэ хэсэгт нэмж оруулна уу.`,feature:"Аймгийн мэдээлэл"};
+ const children=soumData.filter(x=>{
+   const p=x.parent?.name?.local||x.parent?.name||x.aimag||x.parent_name||'';
+   return norm(p)===norm(name);
+ });
+ const soumNames=children.map(x=>x.name?.local||x.name_local||x.name||'').filter(Boolean).sort((a,b)=>a.localeCompare(b,'mn'));
+ const soumHtml=soumNames.length?soumNames.map(s=>`<div class="soum">${s}</div>`).join(''):'<div class="soum">Сумдын мэдээлэл ачаалж байна…</div>';
+ document.getElementById('selectHint').textContent='Сонгосон бүс';
+ document.getElementById('details').className='';
+ document.getElementById('details').innerHTML=`
+ <h2 id="provinceName">${name}</h2><div class="en">${feature?.feature?.properties?.name_en||''}</div>
+ <p id="provinceDesc">${info.desc}</p>
+ <div class="infoGrid"><div class="info"><b>${soumNames.length||'—'}</b><span>СУМ / НЭГЖ</span></div><div class="info"><b>${info.feature}</b><span>ОНЦЛОГ</span></div></div>
+ <div class="soumHead"><span>Сумдын нэрс</span><span class="hint">${soumNames.length} нэгж</span></div>
+ <div id="soums">${soumHtml}</div>`;
+}
+function onEachFeature(feature,layer){
+ const name=propName(feature.properties);
+ layer.bindTooltip(name,{sticky:true,direction:'top',className:'mn-tip'});
+ layer.on({
+  mouseover:e=>{if(selected!==layer)e.target.setStyle({weight:2.8,color:'#164d3c',fillColor:'#b3dfc8',fillOpacity:.98});e.target.bringToFront()},
+  mouseout:e=>{if(selected!==layer)geoLayer.resetStyle(e.target)},
+  click:e=>{
+   if(selected)geoLayer.resetStyle(selected);
+   selected=e.target;selected.setStyle({weight:3,color:'#123f32',fillColor:'#e0b85b',fillOpacity:1});
+   map.fitBounds(selected.getBounds(),{padding:[35,35],maxZoom:7,animate:true});
+   showProvince(name,feature);
+  }
+ });
+}
+async function load(){
+ const urls=[
+  'https://raw.githubusercontent.com/Mongolore/mongolore/main/public/data/mongolia-aimags.geojson'
+ ];
+ try{
+  let response=await fetch(urls[0]);if(!response.ok)throw new Error('Газрын зургийн файл олдсонгүй');
+  const geo=await response.json();
+  geoLayer=L.geoJSON(geo,{style:baseStyle,onEachFeature}).addTo(map);
+  map.fitBounds(geoLayer.getBounds(),{padding:[25,25]});
+  document.getElementById('loadedCount').textContent=geo.features.length;
+ }catch(err){
+  document.getElementById('map').innerHTML='<div style="padding:30px;color:#7b4b39;font-size:14px">Газрын зургийн өгөгдөл ачаалж чадсангүй. Интернэт холболтоо шалгана уу.</div>';
+  console.error(err);
+ }
+ try{
+  const r=await fetch('https://raw.githubusercontent.com/open-admin-data/mongolia-administrative-divisions/master/data/all-soum.json');
+  if(r.ok){const d=await r.json();soumData=Array.isArray(d)?d:(d.data||d.features||[]);if(selected)showProvince(propName(selected.feature.properties),selected.feature);}
+ }catch(e){console.warn('Сумдын жагсаалт ачаалсангүй',e)}
+}
+load();
+</script>
+</body>
+</html>
